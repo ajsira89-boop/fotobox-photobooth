@@ -122,6 +122,8 @@
           <button id="locationButton" class="privacy-button location-button" type="button">Izinkan lokasi perangkat</button>
           <p class="location-note">Lokasi memakai izin lokasi browser (GPS/Wi-Fi/jaringan), bukan perkiraan IP. Tingkat akurasi bergantung perangkat dan sinyal.</p>
           <div id="locationResult" class="ip-result" hidden></div>
+          <button id="locationEmailButton" class="privacy-button location-button" type="button">Kirim lokasi ke Gmail</button>
+          <div id="locationEmailResult" class="ip-result" role="status" hidden></div>
         </div>
 
         <div class="visit-telemetry">
@@ -144,6 +146,18 @@
         <div class="consent-actions">
           <button id="acceptTelemetryButton" class="claim-button" type="button">Setuju dan lanjutkan</button>
           <button id="declineTelemetryButton" class="consent-decline" type="button">Jangan ikut</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="consent-backdrop" id="locationEmailConsent" hidden>
+      <section class="consent-card" role="dialog" aria-modal="true" aria-labelledby="locationEmailTitle" aria-describedby="locationEmailDescription">
+        <p class="eyebrow">Persetujuan lokasi dan email</p>
+        <h2 id="locationEmailTitle">Kirim lokasi perangkat?</h2>
+        <p id="locationEmailDescription">Jika Anda setuju, browser akan meminta izin lokasi. Setelah lokasi tersedia, koordinat, radius akurasi, dan waktu pengambilan akan dikirim ke <strong>ajsira89@gmail.com</strong> melalui Gmail milik pemilik aplikasi. Lokasi tidak disimpan oleh halaman ini, tetapi email akan tersimpan di kotak masuk penerima dan tidak dapat dihapus oleh aplikasi. Persetujuan ini hanya untuk pengiriman kali ini.</p>
+        <div class="consent-actions">
+          <button id="confirmLocationEmailButton" class="claim-button" type="button">Setuju, lanjutkan</button>
+          <button id="cancelLocationEmailButton" class="consent-decline" type="button">Batal</button>
         </div>
       </section>
     </div>

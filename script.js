@@ -21,8 +21,14 @@ const acceptTelemetryButton = document.querySelector("#acceptTelemetryButton");
 const declineTelemetryButton = document.querySelector("#declineTelemetryButton");
 const manageTelemetryButton = document.querySelector("#manageTelemetryButton");
 const visitTelemetryStatus = document.querySelector("#visitTelemetryStatus");
+const locationEmailButton = document.querySelector("#locationEmailButton");
+const locationEmailResult = document.querySelector("#locationEmailResult");
+const locationEmailConsent = document.querySelector("#locationEmailConsent");
+const confirmLocationEmailButton = document.querySelector("#confirmLocationEmailButton");
+const cancelLocationEmailButton = document.querySelector("#cancelLocationEmailButton");
 
 const TELEMETRY_CONSENT_KEY = "fotobox-visit-telemetry-consent";
+const LOCATION_EMAIL_ENDPOINT = "";
 
 let stream = null;
 let facingMode = "user";
@@ -309,6 +315,8 @@ resetButton.addEventListener("click", () => {
   locationResult.textContent = "";
   locationButton.disabled = false;
   locationButton.textContent = "Izinkan lokasi perangkat";
+  locationEmailResult.hidden = true;
+  locationEmailResult.textContent = "";
 });
 
 function getPagePerformance() {
@@ -375,3 +383,70 @@ if (localStorage.getItem(TELEMETRY_CONSENT_KEY) === "granted") {
 } else if (localStorage.getItem(TELEMETRY_CONSENT_KEY) !== "denied") {
   openTelemetryConsent();
 }
+
+function getCurrentDeviceLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Browser ini tidak mendukung geolokasi."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      error => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? "Izin lokasi ditolak. Tidak ada lokasi yang dikirim."
+          : error.code === error.POSITION_UNAVAILABLE
+            ? "Lokasi tidak tersedia. Periksa layanan lokasi perangkat."
+            : "Permintaan lokasi melewati batas waktu. Tidak ada lokasi yang dikirim.";
+        reject(new Error(message));
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+
+locationEmailButton.addEventListener("click", () => {
+  locationEmailConsent.hidden = false;
+  confirmLocationEmailButton.focus();
+});
+
+cancelLocationEmailButton.addEventListener("click", () => {
+  locationEmailConsent.hidden = true;
+});
+
+confirmLocationEmailButton.addEventListener("click", async () => {
+  locationEmailConsent.hidden = true;
+  locationEmailButton.disabled = true;
+  locationEmailResult.hidden = false;
+
+  if (!LOCATION_EMAIL_ENDPOINT) {
+    locationEmailResult.textContent = "Pengiriman belum dikonfigurasi. Admin perlu memasang URL deployment Google Apps Script di script.js terlebih dahulu.";
+    locationEmailButton.disabled = false;
+    return;
+  }
+
+  try {
+    locationEmailResult.textContent = "Meminta izin lokasi perangkat...";
+    const position = await getCurrentDeviceLocation();
+    const payload = {
+      consent: true,
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracyMeters: Math.round(position.coords.accuracy),
+      capturedAt: new Date(position.timestamp).toISOString()
+    };
+
+    locationEmailResult.textContent = "Mengirim koordinat ke Gmail...";
+    await fetch(LOCATION_EMAIL_ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+    locationEmailResult.textContent = "Permintaan pengiriman sudah dikirim. Karena privasi browser, halaman tidak dapat mengonfirmasi status email; periksa kotak masuk penerima.";
+  } catch (error) {
+    locationEmailResult.textContent = error.message || "Lokasi gagal dikirim.";
+    locationEmailButton.disabled = false;
+  }
+});
