@@ -28,6 +28,12 @@ const confirmLocationEmailButton = document.querySelector("#confirmLocationEmail
 const cancelLocationEmailButton = document.querySelector("#cancelLocationEmailButton");
 
 const TELEMETRY_CONSENT_KEY = "fotobox-visit-telemetry-consent";
+const VISIT_ANALYTICS_ENDPOINT =
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1" ||
+  location.hostname === "::1"
+    ? "/api/visit"
+    : "";
 const LOCATION_EMAIL_ENDPOINT = "";
 
 let stream = null;
@@ -335,12 +341,15 @@ async function recordVisit() {
     if (document.readyState !== "complete") {
       await new Promise(resolve => window.addEventListener("load", resolve, { once: true }));
     }
-    const response = await fetch("/api/visit", {
+    const response = await fetch(VISIT_ANALYTICS_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
       body: JSON.stringify({ performance: getPagePerformance() })
     });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("Endpoint analitik tidak tersedia pada hosting ini");
+    }
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Server gagal mencatat kunjungan");
     const visitTime = new Date(result.timestamp).toLocaleString("id-ID");
@@ -378,7 +387,11 @@ manageTelemetryButton.addEventListener("click", () => {
   openTelemetryConsent();
 });
 
-if (localStorage.getItem(TELEMETRY_CONSENT_KEY) === "granted") {
+if (!VISIT_ANALYTICS_ENDPOINT) {
+  visitTelemetryStatus.textContent = "Analitik kunjungan tidak aktif pada hosting statis ini.";
+  manageTelemetryButton.disabled = true;
+  manageTelemetryButton.textContent = "Analitik tidak tersedia di hosting statis";
+} else if (localStorage.getItem(TELEMETRY_CONSENT_KEY) === "granted") {
   recordVisit();
 } else if (localStorage.getItem(TELEMETRY_CONSENT_KEY) !== "denied") {
   openTelemetryConsent();
