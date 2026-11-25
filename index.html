@@ -48,6 +48,13 @@
             <h1>Siap berpose?</h1>
             <p>Nyalakan kamera untuk mulai</p>
           </div>
+          <div class="privacy-shield" id="privacyShield" hidden>
+            <div class="privacy-shield-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A10.7 10.7 0 0112 5c5 0 8.5 4 9.5 7-.4 1.2-1.2 2.4-2.3 3.4M6.2 6.2C4.2 7.5 3 9.4 2.5 12c.5 1.5 1.8 3.2 3.7 4.7A9.8 9.8 0 0012 19c1.2 0 2.3-.2 3.3-.6" /></svg>
+            </div>
+            <h2>Preview disembunyikan</h2>
+            <p>Kamera sudah dimatikan. Nyalakan kembali jika ingin lanjut berfoto.</p>
+          </div>
           <div class="countdown" id="countdown" hidden>3</div>
           <div class="flash" id="flash"></div>
         </div>
@@ -63,6 +70,12 @@
 
           <button class="icon-button" id="startButton" type="button" title="Nyalakan kamera" aria-label="Nyalakan kamera">
             <svg viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5v-13z" /></svg>
+          </button>
+        </div>
+        <div class="privacy-controls">
+          <button class="privacy-shutter" id="hidePreviewButton" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A10.7 10.7 0 0112 5c5 0 8.5 4 9.5 7-.4 1.2-1.2 2.4-2.3 3.4M6.2 6.2C4.2 7.5 3 9.4 2.5 12c.5 1.5 1.8 3.2 3.7 4.7A9.8 9.8 0 0012 19c1.2 0 2.3-.2 3.3-.6" /></svg>
+            <span>Sembunyikan preview &amp; matikan kamera</span>
           </button>
         </div>
       </section>
@@ -115,11 +128,11 @@
         </div>
 
         <div class="privacy-section">
-          <label>IP publik</label>
-          <p>IP publik menunjukkan jalur koneksi, bukan lokasi provinsi yang presisi. Dengan izin, browser meminta IP ke layanan ipify yang menerima permintaan tersebut.</p>
-          <button id="ipPermissionButton" class="privacy-button" type="button">Izinkan cek IP publik</button>
+          <label>IP publik &amp; lokasi perangkat</label>
+          <p>IP hanya memperkirakan jaringan/wilayah. Lokasi perangkat memakai izin browser dan sinyal perangkat; akurasinya bisa berbeda.</p>
+          <button id="ipPermissionButton" class="privacy-button" type="button">Periksa IP publik</button>
           <div id="ipResult" class="ip-result" hidden></div>
-          <button id="locationButton" class="privacy-button location-button" type="button">Izinkan lokasi perangkat</button>
+          <button id="locationButton" class="privacy-button location-button" type="button">Tampilkan lokasi perangkat</button>
           <p class="location-note">Lokasi memakai izin lokasi browser (GPS/Wi-Fi/jaringan), bukan perkiraan IP. Tingkat akurasi bergantung perangkat dan sinyal.</p>
           <div id="locationResult" class="ip-result" hidden></div>
           <button id="locationEmailButton" class="privacy-button location-button" type="button">Kirim lokasi ke Gmail</button>
@@ -128,8 +141,8 @@
 
         <div class="visit-telemetry">
           <label for="visitTelemetryStatus">Analitik kunjungan</label>
-          <p id="visitTelemetryStatus" role="status">Belum ada data kunjungan yang dikirim.</p>
-          <button id="manageTelemetryButton" class="privacy-button" type="button">Atur persetujuan kunjungan</button>
+          <p id="visitTelemetryStatus" role="status">Pilihan privasi belum diatur.</p>
+          <button id="manageTelemetryButton" class="privacy-button" type="button">Atur semua pilihan privasi</button>
         </div>
 
         <div class="reset-section">
@@ -138,26 +151,33 @@
       </aside>
     </main>
 
-    <div class="consent-backdrop" id="telemetryConsent" hidden>
-      <section class="consent-card" role="dialog" aria-modal="true" aria-labelledby="consentTitle" aria-describedby="consentDescription">
-        <p class="eyebrow">Pilihan privasi</p>
-        <h2 id="consentTitle">Bantu ukur performa Fotobox?</h2>
-        <p id="consentDescription">Jika setuju, pada kunjungan ini dan kunjungan berikutnya server akan mencatat alamat IP yang terlihat oleh server, waktu kunjungan, serta waktu pemuatan halaman untuk analisis performa. Data disimpan di server maksimal 7 hari lalu dihapus otomatis. IP dapat memberi perkiraan jaringan/wilayah yang kasar, bukan provinsi yang pasti. Anda bisa menolak atau mencabut izin untuk pencatatan berikutnya kapan saja; catatan yang sudah dibuat tetap dihapus otomatis paling lambat 7 hari setelah kunjungan.</p>
-        <div class="consent-actions">
-          <button id="acceptTelemetryButton" class="claim-button" type="button">Setuju dan lanjutkan</button>
-          <button id="declineTelemetryButton" class="consent-decline" type="button">Jangan ikut</button>
+    <div class="consent-backdrop" id="privacyConsent" hidden>
+      <section class="consent-card privacy-consent-card" role="dialog" aria-modal="true" aria-labelledby="privacyConsentTitle" aria-describedby="privacyConsentDescription">
+        <p class="eyebrow">Pilihan privasi · atur saat masuk</p>
+        <h2 id="privacyConsentTitle">Pilih izin untuk Fotobox</h2>
+        <p id="privacyConsentDescription">Semua pilihan opsional dimatikan secara default. Pilihan yang Anda aktifkan berlaku untuk kunjungan ini dan kunjungan berikutnya sampai diubah. Anda tetap bisa memakai photobooth tanpa mengaktifkan pilihan opsional.</p>
+        <div class="consent-options">
+          <label class="consent-option">
+            <input id="consentPublicIp" type="checkbox" />
+            <span><strong>Cek IP publik</strong><small>Meminta IP ke layanan ipify dan menampilkannya di halaman. Layanan tersebut menerima permintaan dari IP Anda. IP tidak menentukan provinsi secara pasti.</small></span>
+          </label>
+          <label class="consent-option">
+            <input id="consentLocationDisplay" type="checkbox" />
+            <span><strong>Tampilkan lokasi perangkat</strong><small>Meminta koordinat lokasi untuk ditampilkan hanya di halaman. Browser mungkin menampilkan permintaan izin lokasi terpisah.</small></span>
+          </label>
+          <label class="consent-option" id="consentLocationEmailOption">
+            <input id="consentLocationEmail" type="checkbox" />
+            <span><strong>Kirim lokasi ke ajsira89@gmail.com</strong><small id="consentLocationEmailNote">Jika aktif, setiap kunjungan lokasi perangkat, radius akurasi, dan waktu lokasi dikirim ke alamat tersebut setelah izin lokasi browser diberikan. Email yang terkirim tidak bisa dihapus oleh aplikasi.</small></span>
+          </label>
+          <label class="consent-option" id="consentAnalyticsOption">
+            <input id="consentAnalytics" type="checkbox" />
+            <span><strong>Analitik performa kunjungan</strong><small id="consentAnalyticsNote">Mencatat IP yang terlihat server, waktu kunjungan, dan metrik pemuatan. Data di server lokal dihapus otomatis setelah 7 hari.</small></span>
+          </label>
         </div>
-      </section>
-    </div>
-
-    <div class="consent-backdrop" id="locationEmailConsent" hidden>
-      <section class="consent-card" role="dialog" aria-modal="true" aria-labelledby="locationEmailTitle" aria-describedby="locationEmailDescription">
-        <p class="eyebrow">Persetujuan lokasi dan email</p>
-        <h2 id="locationEmailTitle">Kirim lokasi perangkat?</h2>
-        <p id="locationEmailDescription">Jika Anda setuju, browser akan meminta izin lokasi. Setelah lokasi tersedia, koordinat, radius akurasi, dan waktu pengambilan akan dikirim ke <strong>ajsira89@gmail.com</strong> melalui Gmail milik pemilik aplikasi. Lokasi tidak disimpan oleh halaman ini, tetapi email akan tersimpan di kotak masuk penerima dan tidak dapat dihapus oleh aplikasi. Persetujuan ini hanya untuk pengiriman kali ini.</p>
+        <p class="camera-consent-note"><strong>Kamera:</strong> kamera hanya dimulai setelah Anda menekan tombol kamera dan mengizinkan permintaan browser. Tombol “Sembunyikan preview” akan mematikan kamera.</p>
         <div class="consent-actions">
-          <button id="confirmLocationEmailButton" class="claim-button" type="button">Setuju, lanjutkan</button>
-          <button id="cancelLocationEmailButton" class="consent-decline" type="button">Batal</button>
+          <button id="savePrivacyChoicesButton" class="claim-button" type="button">Simpan pilihan</button>
+          <button id="rejectOptionalChoicesButton" class="consent-decline" type="button">Tolak semua opsional</button>
         </div>
       </section>
     </div>

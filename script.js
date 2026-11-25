@@ -3,9 +3,11 @@ const canvas = document.querySelector("#captureCanvas");
 const cameraFrame = document.querySelector("#cameraFrame");
 const cameraStatus = document.querySelector("#cameraStatus");
 const startButton = document.querySelector("#startButton");
+const hidePreviewButton = document.querySelector("#hidePreviewButton");
 const captureButton = document.querySelector("#captureButton");
 const flipButton = document.querySelector("#flipButton");
 const countdownElement = document.querySelector("#countdown");
+const privacyShield = document.querySelector("#privacyShield");
 const flash = document.querySelector("#flash");
 const gallery = document.querySelector("#gallery");
 const clearButton = document.querySelector("#clearButton");
@@ -16,18 +18,23 @@ const ipResult = document.querySelector("#ipResult");
 const locationButton = document.querySelector("#locationButton");
 const locationResult = document.querySelector("#locationResult");
 const resetButton = document.querySelector("#resetButton");
-const telemetryConsent = document.querySelector("#telemetryConsent");
-const acceptTelemetryButton = document.querySelector("#acceptTelemetryButton");
-const declineTelemetryButton = document.querySelector("#declineTelemetryButton");
 const manageTelemetryButton = document.querySelector("#manageTelemetryButton");
 const visitTelemetryStatus = document.querySelector("#visitTelemetryStatus");
 const locationEmailButton = document.querySelector("#locationEmailButton");
 const locationEmailResult = document.querySelector("#locationEmailResult");
-const locationEmailConsent = document.querySelector("#locationEmailConsent");
-const confirmLocationEmailButton = document.querySelector("#confirmLocationEmailButton");
-const cancelLocationEmailButton = document.querySelector("#cancelLocationEmailButton");
+const privacyConsent = document.querySelector("#privacyConsent");
+const consentPublicIp = document.querySelector("#consentPublicIp");
+const consentLocationDisplay = document.querySelector("#consentLocationDisplay");
+const consentLocationEmail = document.querySelector("#consentLocationEmail");
+const consentAnalytics = document.querySelector("#consentAnalytics");
+const consentLocationEmailOption = document.querySelector("#consentLocationEmailOption");
+const consentLocationEmailNote = document.querySelector("#consentLocationEmailNote");
+const consentAnalyticsOption = document.querySelector("#consentAnalyticsOption");
+const consentAnalyticsNote = document.querySelector("#consentAnalyticsNote");
+const savePrivacyChoicesButton = document.querySelector("#savePrivacyChoicesButton");
+const rejectOptionalChoicesButton = document.querySelector("#rejectOptionalChoicesButton");
 
-const TELEMETRY_CONSENT_KEY = "fotobox-visit-telemetry-consent";
+const PRIVACY_CHOICES_KEY = "fotobox-privacy-choices";
 const VISIT_ANALYTICS_ENDPOINT =
   location.hostname === "localhost" ||
   location.hostname === "127.0.0.1" ||
@@ -43,10 +50,27 @@ let activeFilter = "none";
 let photos = [];
 let captureRunId = 0;
 let countdownTimer = null;
+let privacyChoices = null;
 
-function setCameraStatus(live) {
+consentAnalytics.disabled = !VISIT_ANALYTICS_ENDPOINT;
+consentAnalyticsOption.setAttribute("aria-disabled", String(!VISIT_ANALYTICS_ENDPOINT));
+if (!VISIT_ANALYTICS_ENDPOINT) {
+  consentAnalyticsNote.textContent = "Tidak tersedia pada hosting statis GitHub Pages; analitik memerlukan backend.";
+}
+
+consentLocationEmail.disabled = !LOCATION_EMAIL_ENDPOINT;
+consentLocationEmailOption.setAttribute("aria-disabled", String(!LOCATION_EMAIL_ENDPOINT));
+if (!LOCATION_EMAIL_ENDPOINT) {
+  consentLocationEmailNote.textContent = "Belum aktif karena URL deployment Google Apps Script belum dikonfigurasi. Tidak ada lokasi yang dikirim.";
+  locationEmailButton.disabled = true;
+  locationEmailButton.textContent = "Email belum dikonfigurasi";
+  locationEmailResult.hidden = false;
+  locationEmailResult.textContent = "Pengiriman email belum aktif. Pemilik situs perlu mengatur endpoint Apps Script.";
+}
+
+function setCameraStatus(live, statusText) {
   cameraStatus.classList.toggle("live", live);
-  cameraStatus.querySelector("span:last-child").textContent = live ? "Kamera aktif" : "Kamera mati";
+  cameraStatus.querySelector("span:last-child").textContent = statusText || (live ? "Kamera aktif" : "Kamera mati");
   startButton.title = live ? "Matikan kamera" : "Nyalakan kamera";
   startButton.setAttribute("aria-label", live ? "Matikan kamera" : "Nyalakan kamera");
   startButton.innerHTML = live
@@ -56,13 +80,7 @@ function setCameraStatus(live) {
 
 async function startCamera() {
   if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-    video.srcObject = null;
-    cameraFrame.classList.remove("live");
-    captureButton.disabled = true;
-    flipButton.disabled = true;
-    setCameraStatus(false);
+    stopCamera();
     return;
   }
 
@@ -78,7 +96,10 @@ async function startCamera() {
     });
     video.srcObject = stream;
     cameraFrame.classList.add("live");
+    cameraFrame.classList.remove("privacy-hidden");
+    privacyShield.hidden = true;
     giftCover.classList.add("closed");
+    hidePreviewButton.hidden = false;
     captureButton.disabled = false;
     flipButton.disabled = false;
     setCameraStatus(true);
@@ -88,6 +109,26 @@ async function startCamera() {
       : "Kamera tidak dapat dibuka. Pastikan kamera terpasang dan tidak digunakan aplikasi lain.";
     alert(message);
   }
+}
+
+function stopCamera({ hidePreview = false } = {}) {
+  captureRunId++;
+  clearTimeout(countdownTimer);
+  countdownElement.hidden = true;
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  video.srcObject = null;
+  cameraFrame.classList.remove("live");
+  cameraFrame.classList.toggle("privacy-hidden", hidePreview);
+  privacyShield.hidden = !hidePreview;
+  giftCover.classList.remove("closed");
+  captureButton.disabled = true;
+  flipButton.disabled = true;
+  hidePreviewButton.hidden = true;
+  setCameraStatus(false, hidePreview ? "Kamera mati · preview disembunyikan" : "Kamera mati");
 }
 
 async function flipCamera() {
@@ -186,6 +227,7 @@ startButton.addEventListener("click", startCamera);
 captureButton.addEventListener("click", beginCapture);
 flipButton.addEventListener("click", flipCamera);
 claimButton.addEventListener("click", startCamera);
+hidePreviewButton.addEventListener("click", () => stopCamera({ hidePreview: true }));
 
 document.querySelectorAll("#countdownOptions button").forEach(button => {
   button.addEventListener("click", () => {
@@ -221,7 +263,7 @@ clearButton.addEventListener("click", () => {
   renderGallery();
 });
 
-ipPermissionButton.addEventListener("click", async () => {
+async function checkPublicIp() {
   ipPermissionButton.disabled = true;
   ipPermissionButton.textContent = "Mengecek IP publik...";
   ipResult.hidden = false;
@@ -238,42 +280,61 @@ ipPermissionButton.addEventListener("click", async () => {
     ipPermissionButton.disabled = false;
     ipPermissionButton.textContent = "Coba lagi";
   }
-});
+}
 
-locationButton.addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    locationResult.hidden = false;
-    locationResult.textContent = "Browser ini tidak mendukung geolokasi.";
+ipPermissionButton.addEventListener("click", () => {
+  if (!privacyChoices?.publicIp) {
+    openPrivacyConsent();
     return;
   }
 
+  checkPublicIp();
+});
+
+async function showDeviceLocation() {
   locationButton.disabled = true;
   locationButton.textContent = "Meminta izin lokasi...";
   locationResult.hidden = false;
   locationResult.textContent = "Menunggu izin dan lokasi perangkat...";
 
-  navigator.geolocation.getCurrentPosition(
-    ({ coords, timestamp }) => {
-      const accuracy = Math.round(coords.accuracy);
-      locationResult.textContent =
-        `Koordinat: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}. ` +
-        `Perkiraan radius akurasi: ±${accuracy} m. ` +
-        `Diperbarui: ${new Date(timestamp).toLocaleString("id-ID")}.`;
-      locationButton.disabled = false;
-      locationButton.textContent = "Perbarui lokasi perangkat";
-    },
-    error => {
-      const message = error.code === error.PERMISSION_DENIED
-        ? "Izin lokasi ditolak. Aktifkan izin lokasi untuk situs ini di pengaturan browser."
-        : error.code === error.POSITION_UNAVAILABLE
-          ? "Lokasi tidak tersedia. Periksa GPS atau layanan lokasi perangkat."
-          : "Permintaan lokasi melewati batas waktu. Silakan coba lagi.";
-      locationResult.textContent = message;
-      locationButton.disabled = false;
-      locationButton.textContent = "Coba lagi";
-    },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-  );
+  try {
+    const position = await getCurrentDeviceLocation();
+    displayDeviceLocation(position);
+    locationButton.textContent = "Perbarui lokasi perangkat";
+  } catch (error) {
+    locationResult.textContent = error.message || "Lokasi tidak tersedia.";
+    locationButton.textContent = "Coba lagi";
+  } finally {
+    locationButton.disabled = false;
+  }
+}
+
+locationButton.addEventListener("click", () => {
+  if (!privacyChoices?.locationDisplay) {
+    openPrivacyConsent();
+    return;
+  }
+
+  showDeviceLocation();
+});
+
+locationEmailButton.addEventListener("click", async () => {
+  if (!LOCATION_EMAIL_ENDPOINT) return;
+  if (!privacyChoices?.locationEmail) {
+    openPrivacyConsent();
+    return;
+  }
+
+  locationEmailButton.disabled = true;
+  locationEmailResult.hidden = false;
+  try {
+    const position = await getCurrentDeviceLocation();
+    await emailDeviceLocation(position);
+  } catch (error) {
+    locationEmailResult.textContent = error.message || "Lokasi gagal dikirim.";
+  } finally {
+    locationEmailButton.disabled = false;
+  }
 });
 
 resetButton.addEventListener("click", () => {
@@ -282,16 +343,18 @@ resetButton.addEventListener("click", () => {
   countdownElement.hidden = true;
 
   if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
+    stopCamera();
   }
   video.srcObject = null;
   cameraFrame.classList.remove("live");
+  cameraFrame.classList.remove("privacy-hidden");
+  privacyShield.hidden = true;
   giftCover.classList.remove("closed");
   video.style.transform = "scaleX(-1)";
   video.style.filter = "none";
   captureButton.disabled = true;
   flipButton.disabled = true;
+  hidePreviewButton.hidden = true;
   setCameraStatus(false);
 
   facingMode = "user";
@@ -316,11 +379,11 @@ resetButton.addEventListener("click", () => {
   ipResult.hidden = true;
   ipResult.textContent = "";
   ipPermissionButton.disabled = false;
-  ipPermissionButton.textContent = "Izinkan cek IP publik";
+  ipPermissionButton.textContent = "Periksa IP publik";
   locationResult.hidden = true;
   locationResult.textContent = "";
   locationButton.disabled = false;
-  locationButton.textContent = "Izinkan lokasi perangkat";
+  locationButton.textContent = "Tampilkan lokasi perangkat";
   locationEmailResult.hidden = true;
   locationEmailResult.textContent = "";
 });
@@ -360,43 +423,6 @@ async function recordVisit() {
   }
 }
 
-function openTelemetryConsent() {
-  telemetryConsent.hidden = false;
-  acceptTelemetryButton.focus();
-}
-
-function closeTelemetryConsent() {
-  telemetryConsent.hidden = true;
-}
-
-acceptTelemetryButton.addEventListener("click", () => {
-  localStorage.setItem(TELEMETRY_CONSENT_KEY, "granted");
-  closeTelemetryConsent();
-  recordVisit();
-});
-
-declineTelemetryButton.addEventListener("click", () => {
-  localStorage.setItem(TELEMETRY_CONSENT_KEY, "denied");
-  visitTelemetryStatus.textContent = "Anda menolak analitik kunjungan. Tidak ada data yang dikirim.";
-  closeTelemetryConsent();
-});
-
-manageTelemetryButton.addEventListener("click", () => {
-  localStorage.removeItem(TELEMETRY_CONSENT_KEY);
-  visitTelemetryStatus.textContent = "Pilihan persetujuan dihapus. Kunjungan tidak dicatat sampai Anda memilih setuju.";
-  openTelemetryConsent();
-});
-
-if (!VISIT_ANALYTICS_ENDPOINT) {
-  visitTelemetryStatus.textContent = "Analitik kunjungan tidak aktif pada hosting statis ini.";
-  manageTelemetryButton.disabled = true;
-  manageTelemetryButton.textContent = "Analitik tidak tersedia di hosting statis";
-} else if (localStorage.getItem(TELEMETRY_CONSENT_KEY) === "granted") {
-  recordVisit();
-} else if (localStorage.getItem(TELEMETRY_CONSENT_KEY) !== "denied") {
-  openTelemetryConsent();
-}
-
 function getCurrentDeviceLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -419,47 +445,133 @@ function getCurrentDeviceLocation() {
   });
 }
 
-locationEmailButton.addEventListener("click", () => {
-  locationEmailConsent.hidden = false;
-  confirmLocationEmailButton.focus();
-});
+function displayDeviceLocation(position) {
+  const { coords, timestamp } = position;
+  const accuracy = Math.round(coords.accuracy);
+  locationResult.hidden = false;
+  locationResult.textContent =
+    `Koordinat: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}. ` +
+    `Perkiraan radius akurasi: ±${accuracy} m. ` +
+    `Diperbarui: ${new Date(timestamp).toLocaleString("id-ID")}.`;
+}
 
-cancelLocationEmailButton.addEventListener("click", () => {
-  locationEmailConsent.hidden = true;
-});
+async function emailDeviceLocation(position) {
+  const payload = {
+    consent: true,
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    accuracyMeters: Math.round(position.coords.accuracy),
+    capturedAt: new Date(position.timestamp).toISOString()
+  };
 
-confirmLocationEmailButton.addEventListener("click", async () => {
-  locationEmailConsent.hidden = true;
-  locationEmailButton.disabled = true;
   locationEmailResult.hidden = false;
+  locationEmailResult.textContent = "Mengirim koordinat ke Gmail...";
+  await fetch(LOCATION_EMAIL_ENDPOINT, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+    body: JSON.stringify(payload)
+  });
+  locationEmailResult.textContent =
+    "Permintaan dikirim. Browser tidak dapat mengonfirmasi status email; periksa kotak masuk penerima.";
+}
 
-  if (!LOCATION_EMAIL_ENDPOINT) {
-    locationEmailResult.textContent = "Pengiriman belum dikonfigurasi. Admin perlu memasang URL deployment Google Apps Script di script.js terlebih dahulu.";
-    locationEmailButton.disabled = false;
-    return;
-  }
-
+function readPrivacyChoices() {
   try {
-    locationEmailResult.textContent = "Meminta izin lokasi perangkat...";
-    const position = await getCurrentDeviceLocation();
-    const payload = {
-      consent: true,
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracyMeters: Math.round(position.coords.accuracy),
-      capturedAt: new Date(position.timestamp).toISOString()
+    const stored = JSON.parse(localStorage.getItem(PRIVACY_CHOICES_KEY));
+    if (!stored || typeof stored !== "object") return null;
+    return {
+      publicIp: stored.publicIp === true,
+      locationDisplay: stored.locationDisplay === true,
+      locationEmail: LOCATION_EMAIL_ENDPOINT !== "" && stored.locationEmail === true,
+      analytics: VISIT_ANALYTICS_ENDPOINT !== "" && stored.analytics === true
     };
-
-    locationEmailResult.textContent = "Mengirim koordinat ke Gmail...";
-    await fetch(LOCATION_EMAIL_ENDPOINT, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: JSON.stringify(payload)
-    });
-    locationEmailResult.textContent = "Permintaan pengiriman sudah dikirim. Karena privasi browser, halaman tidak dapat mengonfirmasi status email; periksa kotak masuk penerima.";
   } catch (error) {
-    locationEmailResult.textContent = error.message || "Lokasi gagal dikirim.";
-    locationEmailButton.disabled = false;
+    console.error("Could not read saved privacy choices:", error);
+    return null;
   }
-});
+}
+
+function openPrivacyConsent() {
+  consentPublicIp.checked = privacyChoices?.publicIp === true;
+  consentLocationDisplay.checked = privacyChoices?.locationDisplay === true;
+  consentLocationEmail.checked = privacyChoices?.locationEmail === true;
+  consentAnalytics.checked = privacyChoices?.analytics === true;
+  privacyConsent.hidden = false;
+  savePrivacyChoicesButton.focus();
+}
+
+async function applyPrivacyChoices(choices, previousChoices, { everyVisit = false } = {}) {
+  const shouldRun = key => choices[key] && (everyVisit || previousChoices?.[key] !== true);
+  const tasks = [];
+
+  if (shouldRun("publicIp")) tasks.push(checkPublicIp());
+  if (shouldRun("analytics")) tasks.push(recordVisit());
+
+  const shouldGetLocation = shouldRun("locationDisplay") || shouldRun("locationEmail");
+  if (shouldGetLocation) {
+    tasks.push((async () => {
+      locationResult.hidden = !choices.locationDisplay;
+      if (choices.locationDisplay) locationResult.textContent = "Meminta izin lokasi...";
+      if (choices.locationEmail) locationEmailResult.textContent = "Menunggu lokasi untuk dikirim...";
+
+      try {
+        const position = await getCurrentDeviceLocation();
+        if (choices.locationDisplay) displayDeviceLocation(position);
+        if (choices.locationEmail) await emailDeviceLocation(position);
+      } catch (error) {
+        if (choices.locationDisplay) {
+          locationResult.hidden = false;
+          locationResult.textContent = error.message;
+        }
+        if (choices.locationEmail) {
+          locationEmailResult.hidden = false;
+          locationEmailResult.textContent = `${error.message} Tidak ada lokasi yang dikirim.`;
+        }
+      }
+    })());
+  }
+
+  if (!choices.analytics) {
+    visitTelemetryStatus.textContent = VISIT_ANALYTICS_ENDPOINT
+      ? "Analitik tidak diaktifkan. Tidak ada data kunjungan yang dikirim."
+      : "Analitik kunjungan tidak tersedia pada hosting statis ini.";
+  }
+  if (!choices.locationEmail && LOCATION_EMAIL_ENDPOINT) {
+    locationEmailResult.hidden = true;
+    locationEmailResult.textContent = "";
+  }
+  await Promise.all(tasks);
+}
+
+async function savePrivacyChoices(rejectAll = false) {
+  if (rejectAll) {
+    consentPublicIp.checked = false;
+    consentLocationDisplay.checked = false;
+    consentLocationEmail.checked = false;
+    consentAnalytics.checked = false;
+  }
+
+  const previousChoices = privacyChoices;
+  privacyChoices = {
+    publicIp: consentPublicIp.checked,
+    locationDisplay: consentLocationDisplay.checked,
+    locationEmail: LOCATION_EMAIL_ENDPOINT !== "" && consentLocationEmail.checked,
+    analytics: VISIT_ANALYTICS_ENDPOINT !== "" && consentAnalytics.checked
+  };
+  localStorage.setItem(PRIVACY_CHOICES_KEY, JSON.stringify(privacyChoices));
+  privacyConsent.hidden = true;
+  visitTelemetryStatus.textContent = "Pilihan privasi tersimpan. Anda dapat mengubahnya kapan saja.";
+  await applyPrivacyChoices(privacyChoices, previousChoices);
+}
+
+manageTelemetryButton.addEventListener("click", openPrivacyConsent);
+savePrivacyChoicesButton.addEventListener("click", () => savePrivacyChoices());
+rejectOptionalChoicesButton.addEventListener("click", () => savePrivacyChoices(true));
+
+privacyChoices = readPrivacyChoices();
+if (privacyChoices) {
+  applyPrivacyChoices(privacyChoices, null, { everyVisit: true });
+} else {
+  openPrivacyConsent();
+}
