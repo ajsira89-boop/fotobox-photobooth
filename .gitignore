@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+visit_metrics.jsonl
+visit_metrics.jsonl.tmp
+.fotobox/

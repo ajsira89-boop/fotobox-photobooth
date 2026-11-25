@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#191919" />
+    <title>Fotobox — Photobooth Kamera</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Beranda Fotobox">
+        <span class="brand-mark"><span></span></span>
+        <span>fotobox.</span>
+      </a>
+      <div class="status" id="cameraStatus"><span class="status-dot"></span><span>Kamera mati</span></div>
+    </header>
+
+    <main class="app-shell">
+      <section class="studio" aria-label="Studio kamera">
+        <div class="camera-frame" id="cameraFrame">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="captureCanvas" hidden></canvas>
+          <div class="gift-cover" id="giftCover">
+            <div class="gift-confetti confetti-one"></div>
+            <div class="gift-confetti confetti-two"></div>
+            <div class="gift-confetti confetti-three"></div>
+            <div class="gift-box" aria-hidden="true">
+              <div class="gift-lid"><span></span></div>
+              <div class="gift-ribbon"></div>
+              <div class="gift-body"></div>
+            </div>
+            <p class="gift-kicker">SPECIAL UNTUKMU</p>
+            <h1>Kamu dapat hadiah gratis!</h1>
+            <p class="gift-description">Ambil foto cantikmu dan buka hadiah kejutan spesial.</p>
+            <button class="claim-button" id="claimButton" type="button">
+              <span>Ambil hadiah sekarang</span>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </button>
+          </div>
+          <div class="camera-placeholder" id="cameraPlaceholder">
+            <div class="camera-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M15.2 5l1.3 2H20a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2h3.5l1.3-2h6.4zM12 16.5a4 4 0 100-8 4 4 0 000 8z" /></svg>
+            </div>
+            <h1>Siap berpose?</h1>
+            <p>Nyalakan kamera untuk mulai</p>
+          </div>
+          <div class="countdown" id="countdown" hidden>3</div>
+          <div class="flash" id="flash"></div>
+        </div>
+
+        <div class="controls">
+          <button class="icon-button" id="flipButton" type="button" title="Balik kamera" aria-label="Balik kamera" disabled>
+            <svg viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 00-14.5-5L4 8m16 8a8.1 8.1 0 01-14.5 5L4 16M4 4v4h4m12 12v-4h-4" /></svg>
+          </button>
+
+          <button class="capture-button" id="captureButton" type="button" aria-label="Ambil foto" disabled>
+            <span></span>
+          </button>
+
+          <button class="icon-button" id="startButton" type="button" title="Nyalakan kamera" aria-label="Nyalakan kamera">
+            <svg viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5v-13z" /></svg>
+          </button>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Pengaturan</p>
+            <h2>Sesuaikan hasil</h2>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Hitung mundur</label>
+          <div class="segmented" id="countdownOptions" role="radiogroup" aria-label="Hitung mundur">
+            <button type="button" data-count="0" role="radio" aria-checked="false">Off</button>
+            <button class="active" type="button" data-count="3" role="radio" aria-checked="true">3</button>
+            <button type="button" data-count="5" role="radio" aria-checked="false">5</button>
+            <button type="button" data-count="10" role="radio" aria-checked="false">10</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Rasio foto</label>
+          <div class="ratio-grid" id="ratioOptions">
+            <button class="active" type="button" data-ratio="4 / 3">4:3</button>
+            <button type="button" data-ratio="1 / 1">1:1</button>
+            <button type="button" data-ratio="16 / 10">16:10</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label>Filter</label>
+          <div class="filter-grid" id="filterOptions">
+            <button class="active" type="button" data-filter="none"><span class="preview filter-none"></span><b>Normal</b></button>
+            <button type="button" data-filter="grayscale(1)"><span class="preview filter-bw"></span><b>Hitam</b></button>
+            <button type="button" data-filter="sepia(.45) contrast(1.05)"><span class="preview filter-warm"></span><b>Hangat</b></button>
+            <button type="button" data-filter="saturate(1.35) contrast(1.08)"><span class="preview filter-vivid"></span><b>Vivid</b></button>
+          </div>
+        </div>
+
+        <div class="gallery-section">
+          <div class="gallery-heading">
+            <label>Hasil foto</label>
+            <button id="clearButton" type="button" hidden>Hapus semua</button>
+          </div>
+          <div class="gallery" id="gallery">
+            <p class="empty-gallery">Belum ada foto</p>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <label>IP publik</label>
+          <p>IP publik menunjukkan jalur koneksi, bukan lokasi provinsi yang presisi. Dengan izin, browser meminta IP ke layanan ipify yang menerima permintaan tersebut.</p>
+          <button id="ipPermissionButton" class="privacy-button" type="button">Izinkan cek IP publik</button>
+          <div id="ipResult" class="ip-result" hidden></div>
+          <button id="locationButton" class="privacy-button location-button" type="button">Izinkan lokasi perangkat</button>
+          <p class="location-note">Lokasi memakai izin lokasi browser (GPS/Wi-Fi/jaringan), bukan perkiraan IP. Tingkat akurasi bergantung perangkat dan sinyal.</p>
+          <div id="locationResult" class="ip-result" hidden></div>
+        </div>
+
+        <div class="visit-telemetry">
+          <label for="visitTelemetryStatus">Analitik kunjungan</label>
+          <p id="visitTelemetryStatus" role="status">Belum ada data kunjungan yang dikirim.</p>
+          <button id="manageTelemetryButton" class="privacy-button" type="button">Atur persetujuan kunjungan</button>
+        </div>
+
+        <div class="reset-section">
+          <button id="resetButton" class="reset-button" type="button">Reset sesi photobooth</button>
+        </div>
+      </aside>
+    </main>
+
+    <div class="consent-backdrop" id="telemetryConsent" hidden>
+      <section class="consent-card" role="dialog" aria-modal="true" aria-labelledby="consentTitle" aria-describedby="consentDescription">
+        <p class="eyebrow">Pilihan privasi</p>
+        <h2 id="consentTitle">Bantu ukur performa Fotobox?</h2>
+        <p id="consentDescription">Jika setuju, pada kunjungan ini dan kunjungan berikutnya server akan mencatat alamat IP yang terlihat oleh server, waktu kunjungan, serta waktu pemuatan halaman untuk analisis performa. Data disimpan di server maksimal 7 hari lalu dihapus otomatis. IP dapat memberi perkiraan jaringan/wilayah yang kasar, bukan provinsi yang pasti. Anda bisa menolak atau mencabut izin untuk pencatatan berikutnya kapan saja; catatan yang sudah dibuat tetap dihapus otomatis paling lambat 7 hari setelah kunjungan.</p>
+        <div class="consent-actions">
+          <button id="acceptTelemetryButton" class="claim-button" type="button">Setuju dan lanjutkan</button>
+          <button id="declineTelemetryButton" class="consent-decline" type="button">Jangan ikut</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
